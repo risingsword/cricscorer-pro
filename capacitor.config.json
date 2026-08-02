@@ -1,0 +1,14 @@
+{
+  "appId": "com.cricscorerpro.app",
+  "appName": "CricScorer Pro",
+  "webDir": "dist",
+  "plugins": {
+    "GoogleAuth": {
+      "scopes": ["profile", "email"],
+      "serverClientId": "664124362855-j5j8esg7vj2oje0j9lt4p8j6qi2omtjh.apps.googleusercontent.com",
+      "clientId": "664124362855-j5j8esg7vj2oje0j9lt4p8j6qi2omtjh.apps.googleusercontent.com",
+      "androidClientId": "664124362855-j5j8esg7vj2oje0j9lt4p8j6qi2omtjh.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": true
+    }
+  }
+}

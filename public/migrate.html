@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CricScorer - Data Migration</title>
+    <!-- Firebase core & firestore (v9 compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --primary: #38bdf8;
+            --secondary: #818cf8;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: radial-gradient(circle at top left, #1e1b4b, #0f172a);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        h1 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
+
+        .path-box {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        .path-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .path-value {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            color: #e2e8f0;
+            margin-top: 0.25rem;
+            word-break: break-all;
+        }
+
+        .arrow {
+            display: flex;
+            justify-content: center;
+            margin: 0.5rem 0;
+            font-size: 1.5rem;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.25);
+            margin-top: 1rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.35);
+            opacity: 0.95;
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .status-container {
+            margin-top: 2rem;
+            min-height: 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+
+        .status-text {
+            font-size: 1rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-text.copying { color: var(--primary); }
+        .status-text.done { color: var(--success); }
+        .status-text.error { color: var(--danger); }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-top: 2px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Data Migration</h1>
+        <p class="subtitle">Copies and syncs match documents securely</p>
+
+        <div class="path-box">
+            <div class="path-label">Source Collection</div>
+            <div class="path-value">shareLogins/CDPCQPHU/matches</div>
+        </div>
+
+        <div class="arrow">⬇️</div>
+
+        <div class="path-box">
+            <div class="path-label">Destination Collection</div>
+            <div class="path-value">shareLogins/CQ0J3G7M/matches</div>
+        </div>
+
+        <button id="migrateBtn" class="btn">Start Migration</button>
+
+        <div class="status-container">
+            <div id="spinner" class="spinner"></div>
+            <span id="status" class="status-text">Ready</span>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            projectId: "cricket-scorer-6f0ed",
+            apiKey: "AIzaSyDzX3o3-WZCljw61pOUhhxs-SfrMJU3b9E",
+            authDomain: "cricket-scorer-6f0ed.firebaseapp.com"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const btn = document.getElementById('migrateBtn');
+        const status = document.getElementById('status');
+        const spinner = document.getElementById('spinner');
+
+        btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            spinner.style.display = 'block';
+            status.textContent = 'Copying...';
+            status.className = 'status-text copying';
+
+            try {
+                const srcPath = 'shareLogins/CDPCQPHU/matches';
+                const destPath = 'shareLogins/CQ0J3G7M/matches';
+
+                // 1. Read all documents
+                const snapshot = await db.collection(srcPath).get();
+                const total = snapshot.size;
+
+                if (total === 0) {
+                    status.textContent = 'Done! 0 matches found to copy.';
+                    status.className = 'status-text done';
+                    spinner.style.display = 'none';
+                    return;
+                }
+
+                let copied = 0;
+                let batch = db.batch();
+                let opsCount = 0;
+
+                for (const doc of snapshot.docs) {
+                    const data = doc.data();
+                    const docId = doc.id;
+                    const destRef = db.collection(destPath).doc(docId);
+                    
+                    batch.set(destRef, data);
+                    opsCount++;
+                    copied++;
+
+                    if (opsCount === 500) {
+                        await batch.commit();
+                        batch = db.batch();
+                        opsCount = 0;
+                    }
+                }
+
+                if (opsCount > 0) {
+                    await batch.commit();
+                }
+
+                status.textContent = `Done! ${copied} matches copied`;
+                status.className = 'status-text done';
+            } catch (error) {
+                status.textContent = 'Error: ' + error.message;
+                status.className = 'status-text error';
+                console.error('Migration failed:', error);
+                btn.disabled = false;
+            } finally {
+                spinner.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

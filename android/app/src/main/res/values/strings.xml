@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CricScorer Pro</string>
+    <string name="title_activity_main">CricScorer Pro</string>
+    <string name="package_name">com.cricscorerpro.app</string>
+    <string name="custom_url_scheme">com.cricscorerpro.app</string>
+    <string name="server_client_id">664124362855-j5j8esg7vj2oje0j9lt4p8j6qi2omtjh.apps.googleusercontent.com</string>
+</resources>

@@ -1,0 +1,49 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+  
+    // app_config: anyone can read, nobody can write
+    match /app_config/{document} {
+      allow read: if true;
+      allow write: if false;
+    }
+    
+    match /shareLogins/{code} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update: if true;
+      allow delete: if request.auth != null && 
+        resource.data.ownerUid == request.auth.uid;
+      
+      match /matches/{matchId} {
+        allow read: if true;
+        allow write: if true;
+      }
+    }
+    
+    // googleUsers: only own data
+    match /googleUsers/{uid} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == uid;
+        
+      match /matches/{matchId} {
+        allow read, write: if request.auth != null && 
+          request.auth.uid == uid;
+      }
+    }
+    
+    // userCodes: only own data
+    match /userCodes/{uid} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == uid;
+    }
+    
+    // tournaments: organizer can write, share code read
+    match /tournaments/{tournamentId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null &&
+        resource.data.organizerUid == request.auth.uid;
+    }
+  }
+}

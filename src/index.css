@@ -1,0 +1,679 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --primary: #1e1b4b;
+  --primary-light: #4338ca;
+  --secondary: #f1f5f9;
+  --accent: #ef4444;
+  /* Wicket color */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --text-main: #1e1b4b;
+  --text-muted: #94a3b8;
+  --bg-color: #f8fafc;
+  --border-color: #f1f5f9;
+  --radius-sm: 10px;
+  --radius: 16px;
+  --radius-lg: 20px;
+}
+
+/* ── Prevent ALL zoom ──────────────────────────────────────────────────────
+   1. html/body pan-only: blocks pinch-zoom gesture on Android
+   2. input font-size >= 16px: iOS Safari won't auto-zoom on field focus
+─────────────────────────────────────────────────────────────────────────── */
+html, body {
+  touch-action: pan-x pan-y;
+  overscroll-behavior: none;
+}
+
+/* iOS zooms when input font-size < 16px — force 16px minimum */
+input, select, textarea {
+  font-size: max(16px, 1em) !important;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* ── Eliminate 300ms tap delay on ALL interactive elements ─────────────────
+   touch-action: manipulation = browser knows no double-tap zoom,
+   so it fires click/pointer events immediately without waiting.
+──────────────────────────────────────────────────────────────────────────── */
+button,
+a,
+[role="button"],
+[onclick],
+.tap,
+.nav-item,
+.card,
+div[onClick],
+div[onPointerDown],
+div[onTouchStart] {
+  touch-action: manipulation;
+}
+
+/* ─── iOS-style Tap / Press Animation System ───────────────────────────────
+   Apply .tap class to any touchable element.
+   It gives: overflow clipping + smooth scale-down on press + spring-back.
+   Combine with .tap-fill for a liquid color-fill overlay on press.
+   Combine with .tap-ripple for an expanding ripple from touch point.
+────────────────────────────────────────────────────────────────────────── */
+
+/* Base tap class: clips children, smooth spring scale */
+.tap {
+  position: relative;
+  overflow: hidden;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  will-change: transform;
+  touch-action: manipulation;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background-color 0.12s cubic-bezier(0.4, 0, 0.2, 1),
+              color 0.12s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.tap:active {
+  transform: scale(0.93) translateZ(0);
+}
+
+/* Liquid fill overlay — spreads inward from center on press */
+.tap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0);
+  border-radius: inherit;
+  transition: background 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.tap:active::after {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Dark variant — fills with dark ink */
+.tap-dark:active::after {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* Ripple animation — js-driven via .tap-ripple-active */
+@keyframes ios-ripple {
+  0% {
+    transform: scale(0) translateZ(0);
+    opacity: 0.6;
+  }
+  80% {
+    transform: scale(2.8) translateZ(0);
+    opacity: 0.2;
+  }
+  100% {
+    transform: scale(3.2) translateZ(0);
+    opacity: 0;
+  }
+}
+
+/* Ripple element injected by JS (IosRipple component) */
+.ios-ripple-dot {
+  position: absolute;
+  border-radius: 50%;
+  transform: scale(0);
+  animation: ios-ripple 0.55s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Bottom sheet slide-up animation */
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* Specific tap variants */
+.tap-primary {
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.2s ease,
+              background-color 0.2s ease;
+}
+.tap-primary:active {
+  transform: scale(0.93) translateZ(0);
+  box-shadow: 0 2px 8px rgba(30, 27, 75, 0.15) !important;
+}
+
+/* Nav item press */
+.nav-item {
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+              color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.nav-item:active {
+  transform: scale(0.88) translateY(2px);
+}
+.nav-item.active svg {
+  filter: drop-shadow(0 0 4px rgba(67, 56, 202, 0.4));
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: var(--bg-color);
+  color: var(--text-main);
+  line-height: 1.5;
+  min-height: 100vh;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior-y: none;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  text-decoration: none !important;
+  color: inherit;
+}
+
+/* Form Elements */
+input,
+input[type="text"],
+input[type="number"],
+.premium-input,
+select,
+textarea {
+  -webkit-user-select: auto; /* re-enable selection inside inputs */
+  user-select: auto;
+  width: 100%;
+  padding: 10px 16px !important;
+  border: 1.5px solid transparent !important;
+  background-color: white !important;
+  border-radius: var(--radius-sm) !important;
+  font-size: 14px !important;
+  font-family: inherit !important;
+  font-weight: 700 !important;
+  color: var(--text-main) !important;
+  outline: none !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+input:focus {
+  background-color: #ffffff !important;
+  border-color: var(--primary-light) !important;
+  box-shadow: 0 10px 25px -5px rgba(67, 56, 202, 0.1) !important;
+}
+
+input::placeholder {
+  color: #cbd5e1;
+  font-weight: 600;
+}
+
+/* Custom Radio Buttons */
+input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 22px;
+  height: 22px;
+  border: 2px solid #e2e8f0;
+  border-radius: 50%;
+  outline: none;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  background: #ffffff;
+}
+
+input[type="radio"]:checked {
+  border-color: var(--primary-light);
+}
+
+input[type="radio"]:checked::before {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background-color: var(--primary-light);
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Common Components */
+.card {
+  background: #ffffff;
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.05);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 900;
+}
+
+.container {
+  padding: 16px;
+  padding-bottom: 100px;
+  flex: 1;
+}
+
+/* Floating Bottom Navigation */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 68px;
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(241, 245, 249, 0.8);
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-around;
+  align-items: center;
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.06);
+  z-index: 2000;
+  padding: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.nav-item {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  text-decoration: none !important;
+  flex: 1;
+  height: 68px;
+  gap: 2px;
+  position: relative;
+  overflow: visible;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+              color 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  padding: 0;
+  background: transparent !important;
+}
+
+.nav-item:active {
+  transform: scale(0.85) translateZ(0);
+}
+
+.nav-item.active {
+  color: #4338ca;
+}
+
+.nav-item span {
+  font-size: 9.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Header */
+.header {
+  height: 56px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+}
+
+/* Utility Animations */
+.animate-fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.stagger-1 { animation-delay: 40ms; }
+.stagger-2 { animation-delay: 80ms; }
+.stagger-3 { animation-delay: 120ms; }
+.stagger-4 { animation-delay: 160ms; }
+.stagger-5 { animation-delay: 200ms; }
+.stagger-6 { animation-delay: 240ms; }
+.stagger-7 { animation-delay: 280ms; }
+.stagger-8 { animation-delay: 320ms; }
+.stagger-9 { animation-delay: 360ms; }
+.stagger-10 { animation-delay: 400ms; }
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tap-card {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, background-color 0.2s ease !important;
+  cursor: pointer;
+  touch-action: manipulation;
+  will-change: transform;
+}
+.tap-card:active {
+  transform: scale(0.96) translateZ(0) !important;
+  background-color: #f8fafc !important;
+}
+
+/* Modals — centered overlay (default) */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5000;
+  padding: 20px;
+  animation: overlayFadeIn 0.2s cubic-bezier(0.4,0,0.2,1) forwards;
+}
+
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.modal-content {
+  background: #ffffff;
+  border-radius: 28px;
+  width: 100%;
+  max-width: 480px;
+  padding: 28px 24px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  position: relative;
+  overflow: hidden;
+  animation: modalScaleIn 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards;
+}
+
+@keyframes modalScaleIn {
+  from { transform: scale(0.92); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+/* Bottom sheet variant — apply inline alignItems:flex-end on the overlay */
+@keyframes modalSlideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* Buttons */
+button {
+  height: 42px;
+  padding: 0 24px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1.5px solid #f1f5f9;
+  background: #ffffff;
+  touch-action: manipulation;
+  transition: transform 0.12s cubic-bezier(0.34,1.56,0.64,1),
+              background 0.1s cubic-bezier(0.4,0,0.2,1),
+              box-shadow 0.1s ease,
+              opacity 0.1s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #1e1b4b;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  will-change: transform;
+  position: relative;
+  overflow: hidden;
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.93) translateZ(0);
+}
+
+button.primary {
+  background: linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 10px 25px rgba(30, 27, 75, 0.2);
+  position: relative;
+  overflow: hidden;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.18s ease,
+              background 0.2s ease;
+}
+
+button.primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0);
+  border-radius: inherit;
+  transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+button.primary:active {
+  transform: scale(0.94) translateZ(0);
+  box-shadow: 0 4px 12px rgba(30, 27, 75, 0.2);
+}
+
+button.primary:active::after {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+button.secondary {
+  background-color: white;
+  border: 1.5px solid #f1f5f9;
+  color: #1e1b4b;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02);
+  position: relative;
+  overflow: hidden;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background-color 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.18s ease;
+}
+
+button.secondary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(30, 27, 75, 0);
+  border-radius: inherit;
+  transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+button.secondary:active {
+  transform: scale(0.93) translateZ(0);
+  background-color: #f1f5f9;
+}
+
+button.secondary:active::after {
+  background: rgba(30, 27, 75, 0.06);
+}
+
+button.secondary:hover {
+  background-color: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+/* Scorer Balls */
+.ball-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1.5px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 900;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+/* Wagon Wheel Utilities */
+.wagon-wheel-slice {
+  fill: rgba(16, 185, 129, 0.05);
+  stroke: rgba(16, 185, 129, 0.2);
+  stroke-width: 1;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.wagon-wheel-slice:hover {
+  fill: rgba(16, 185, 129, 0.2);
+  stroke: rgba(16, 185, 129, 1);
+}
+
+/* Loader & Spinner */
+.premium-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(67, 56, 202, 0.1);
+  border-left-color: var(--primary-light);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Bottom nav dot pop */
+@keyframes dotPop {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.4); opacity: 1; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+@keyframes pillPop {
+  0%   { transform: translateX(-50%) scale(0.5); opacity: 0; }
+  70%  { transform: translateX(-50%) scale(1.08); opacity: 1; }
+  100% { transform: translateX(-50%) scale(1);    opacity: 1; }
+}
+
+.pulse-animation {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(0.95);
+  }
+}
+/* 3D Toggle Component */
+.toggle-3d { position: relative; width: 50px; height: 28px; display: inline-block; }
+.toggle-3d input { display: none; }
+
+.toggle-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: pointer;
+}
+
+input:checked + .toggle-track {
+  background: linear-gradient(135deg, #e94560, #c73652);
+  border-color: #e94560;
+  box-shadow: 0 2px 8px rgba(233,69,96,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.8);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+input:checked + .toggle-track .toggle-thumb {
+  left: 25px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.9);
+}
+
+@keyframes slide-up {
+  0% { transform: translateY(100%); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
