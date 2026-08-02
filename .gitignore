@@ -24,3 +24,8 @@ android/app/build/
 # OS generated
 Thumbs.db
 .DS_Store
+*.jks 
+*.keystore 
+.env* 
+*.apk 
+*.txt 
