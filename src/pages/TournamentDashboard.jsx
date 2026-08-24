@@ -6,6 +6,7 @@ import { useMatch } from '../context/MatchContext';
 import { ChevronLeft, Trophy, Calendar, Users, Activity, PlayCircle, Eye, RefreshCw } from 'lucide-react';
 import { calculateNRR, generateKnockoutFixtures, updatePointsTable } from '../utils/tournamentLogic';
 import { sanitizeName, sanitizeNumber } from '../utils/sanitize';
+import { db } from '../firebase';
 
 const TournamentDashboard = () => {
     const { id } = useParams();

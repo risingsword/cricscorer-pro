@@ -117,7 +117,7 @@ const OverCompleteModal = ({ show, onStartNext, onClose, lastOverBowler, striker
 
                         <motion.button
                             className="primary tap"
-                            whileTap={{ scale: 0.95 }}
+                            whileTap={{ scale: 0.97 }}
                             transition={SPRING_BOUNCE}
                             onClick={() => {
                                 if (newBowler.trim() && !isInvalidBowler) {

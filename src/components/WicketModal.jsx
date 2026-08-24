@@ -1,5 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import NameInput from './NameInput';
+import { SPRING_PRESET } from '../utils/animationPresets';
 
 /* ─── iOS Ripple ─────────────────────────────────────────────────────────── */
 function triggerRipple(containerRef, e, color = 'rgba(255,255,255,0.3)') {

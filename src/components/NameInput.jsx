@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useId } from 'react';
 import { getSavedNames, filterNames, saveNameToStorage, removeNameFromStorage, unblockNameFromStorage, getNameMatchCount } from '../utils/nameStorage';
 import { useMatch } from '../context/MatchContext';
 import { X } from 'lucide-react';
@@ -11,6 +11,11 @@ const NameInput = ({ value, onChange, placeholder, className, style, disabled, o
     const containerRef = useRef(null);
     let blurTimeout = useRef(null);
     const { state } = useMatch();
+
+    // Stable, unique field name to defeat browser autofill. useId is pure and
+    // stable per instance — the previous Math.random() ran on every render
+    // (impure) and produced a new name each time.
+    const fieldId = useId().replace(/[^a-zA-Z0-9]/g, '');
 
     const getMatchSuggestions = (q) => {
         // Only suggest from current match if it is actually in progress!
@@ -110,7 +115,7 @@ const NameInput = ({ value, onChange, placeholder, className, style, disabled, o
                 autoCapitalize="off"
                 spellCheck="false"
                 maxLength={50}
-                name={`name_input_${Math.random().toString(36).substring(2, 9)}`}
+                name={`name_input_${fieldId}`}
             />
             {showDropdown && suggestions.length > 0 && (
                 <ul style={{

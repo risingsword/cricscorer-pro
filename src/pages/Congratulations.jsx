@@ -8,11 +8,17 @@ import { updateTournamentMatch } from '../utils/tournamentLogic';
 const Congratulations = () => {
     const navigate = useNavigate();
     const { state, dispatch } = useMatch();
-    const [motm, setMotm] = useState(null);
     const [manualMotm, setManualMotm] = useState(state.manOfMatch?.name || '');
 
+    // Man of the Match is purely derived from match state, so compute it during
+    // render instead of storing it in state and syncing via an effect (that was
+    // the set-state-in-effect anti-pattern — an unnecessary extra render cascade).
+    const motm = (state?.manOfMatch?.name && state.manOfMatch.name !== 'TBA')
+        ? state.manOfMatch
+        : (state.innings ? state.manOfMatch : null);
+
     useEffect(() => {
-        // Fire confetti
+        // Fire confetti on the winning screen
         confetti({
             particleCount: 150,
             spread: 70,
@@ -20,14 +26,7 @@ const Congratulations = () => {
             colors: ['#4f46e5', '#f43f5e', '#10b981', '#f59e0b']
         });
 
-        if (state?.manOfMatch?.name && state.manOfMatch.name !== 'TBA') {
-            setMotm(state.manOfMatch);
-            setManualMotm(state.manOfMatch.name);
-        } else {
-            const calculated = state.innings ? state.manOfMatch : null;
-            setMotm(calculated);
-        }
-
+        // Persist the finished result into the tournament bracket, if applicable
         if (state?.tournamentId && state?.matchId && state.matchStatus === 'complete') {
             updateTournamentMatch(state.tournamentId, state.matchId, state);
         }

@@ -91,7 +91,7 @@ const NewMatch = () => {
             <div className="header" style={{ padding: '0 20px', height: '64px', border: 'none', background: 'white' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <motion.div
-                        whileTap={{ scale: 0.9 }}
+                        whileTap={{ scale: 0.97 }}
                         onClick={() => { triggerHaptic('light'); navigate(-1); }}
                         style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                     >
@@ -127,7 +127,7 @@ const NewMatch = () => {
                             return (
                                 <motion.label
                                     key={i}
-                                    whileTap={{ scale: 0.96 }}
+                                    whileTap={{ scale: 0.97 }}
                                     animate={{
                                         backgroundColor: isSelected ? '#eef2ff' : '#ffffff',
                                         borderColor: isSelected ? '#4338ca' : '#e2e8f0',
@@ -154,7 +154,7 @@ const NewMatch = () => {
                             return (
                                 <motion.label
                                     key={i}
-                                    whileTap={{ scale: 0.96 }}
+                                    whileTap={{ scale: 0.97 }}
                                     animate={{
                                         backgroundColor: isSelected ? '#eef2ff' : '#ffffff',
                                         borderColor: isSelected ? '#4338ca' : '#e2e8f0',
@@ -198,8 +198,7 @@ const NewMatch = () => {
                         id="start-match-btn"
                         className="primary tap"
                         onClick={handleStart}
-                        whileTap={{ scale: 0.94 }}
-                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.97 }}
                         animate={isStarting ? { scale: [1, 1.04, 0.98, 1], transition: { duration: 0.25 } } : {}}
                         transition={SPRING_BOUNCE}
                         disabled={!team1.trim() || !team2.trim() || team1.trim().toLowerCase() === team2.trim().toLowerCase() || !tossWinner || !batFirst || isStarting}

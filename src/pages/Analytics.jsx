@@ -253,8 +253,6 @@ const Analytics = () => {
                         stats[key].bestBowling = { wkts, runs: rns, matchId: m.matchId };
                     } else if (wkts === stats[key].bestBowling.wkts && rns < stats[key].bestBowling.runs) {
                         stats[key].bestBowling = { wkts, runs: rns, matchId: m.matchId };
-                    } else if (wkts === stats[key].bestBowling.wkts && stats[key].bestBowling.wkts === 0 && rns < stats[key].bestBowling.runs) {
-                        stats[key].bestBowling = { wkts, runs: rns, matchId: m.matchId };
                     }
                 });
             });

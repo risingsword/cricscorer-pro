@@ -68,7 +68,7 @@ const ScoreControls = ({
         return (
             <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'center' }}>
                 <motion.div
-                    whileTap={{ scale: 0.94 }}
+                    whileTap={{ scale: 0.97 }}
                     transition={SPRING_BOUNCE}
                     onClick={() => {
                         if (canUndo) {
@@ -107,7 +107,7 @@ const ScoreControls = ({
                     return (
                         <motion.div
                             key={extra}
-                            whileTap={{ scale: 0.93 }}
+                            whileTap={{ scale: 0.97 }}
                             transition={SPRING_PRESET}
                             onClick={() => {
                                 triggerHaptic('light');
@@ -141,7 +141,7 @@ const ScoreControls = ({
                 {/* WICKET */}
                 <motion.div
                     animate={wicketShake ? { x: [-8, 8, -6, 6, -3, 3, 0], scale: 0.96 } : { x: 0, scale: 1 }}
-                    whileTap={{ scale: 0.94 }}
+                    whileTap={{ scale: 0.97 }}
                     transition={SPRING_BOUNCE}
                     onClick={handleWicketClick}
                     style={{
@@ -164,7 +164,7 @@ const ScoreControls = ({
 
                 {/* CATCH DROP */}
                 <motion.div
-                    whileTap={{ scale: 0.94 }}
+                    whileTap={{ scale: 0.97 }}
                     transition={SPRING_PRESET}
                     onClick={() => {
                         if (!currentBowler) return;
@@ -197,7 +197,7 @@ const ScoreControls = ({
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', marginBottom: '8px' }}>
                 {/* UNDO */}
                 <motion.div
-                    whileTap={{ scale: 0.93 }}
+                    whileTap={{ scale: 0.97 }}
                     transition={SPRING_PRESET}
                     onClick={() => {
                         if (canUndo) {
@@ -219,7 +219,7 @@ const ScoreControls = ({
 
                 {/* P.SHIP */}
                 <motion.div
-                    whileTap={{ scale: 0.93 }}
+                    whileTap={{ scale: 0.97 }}
                     transition={SPRING_PRESET}
                     onClick={() => {
                         triggerHaptic('light');
@@ -240,7 +240,7 @@ const ScoreControls = ({
 
                 {/* RETIRE */}
                 <motion.div
-                    whileTap={{ scale: 0.93 }}
+                    whileTap={{ scale: 0.97 }}
                     transition={SPRING_PRESET}
                     onClick={() => {
                         triggerHaptic('light');
@@ -259,7 +259,7 @@ const ScoreControls = ({
 
                 {/* SWAP */}
                 <motion.div
-                    whileTap={{ scale: 0.93 }}
+                    whileTap={{ scale: 0.97 }}
                     transition={SPRING_PRESET}
                     onClick={() => {
                         triggerHaptic('light');
@@ -292,7 +292,7 @@ const ScoreControls = ({
                         return (
                             <motion.div
                                 key={run}
-                                whileTap={{ scale: 0.9, backgroundColor: is4 ? '#7dd3fc' : (is6 ? '#86efac' : '#e2e8f0') }}
+                                whileTap={{ scale: 0.97, backgroundColor: is4 ? '#7dd3fc' : (is6 ? '#86efac' : '#e2e8f0') }}
                                 transition={SPRING_BOUNCE}
                                 onClick={() => onRunPress(run)}
                                 style={{

@@ -1,10 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { App as CapacitorApp } from '@capacitor/app';
 import SplashScreenComp from './components/SplashScreen';
 import { MatchProvider } from './context/MatchContext';
+
+/* ── Route loading strategy ────────────────────────────────────────────────
+   Eager: the launch/hot path only. These are what the user hits first and
+   what must never show a loading state.
+─────────────────────────────────────────────────────────────────────────── */
 import Login from './pages/Login';
 import Home from './pages/Home';
 import NewMatch from './pages/NewMatch';
@@ -12,17 +17,23 @@ import MatchSettings from './pages/MatchSettings';
 import PlayerEntry from './pages/PlayerEntry';
 import LiveScoring from './pages/LiveScoring';
 import InningsBreak from './pages/InningsBreak';
-import Congratulations from './pages/Congratulations';
-import Scorecard from './pages/Scorecard';
 import History from './pages/History';
 import Players from './pages/Players';
-import PlayerProfile from './pages/PlayerProfile';
-import Analytics from './pages/Analytics';
-import WatchLive from './pages/WatchLive';
-import ManualScore from './pages/ManualScore';
-import Tournaments from './pages/Tournaments';
-import CreateTournament from './pages/CreateTournament';
-import TournamentDashboard from './pages/TournamentDashboard';
+
+/* Lazy: heavy or rarely-first-visited. Scorecard pulls in jspdf + html2canvas
+   and Analytics pulls in recharts — together the bulk of the old 2.5 MB
+   single bundle, all of it parsed at launch even though most sessions never
+   open these screens. */
+const Scorecard = lazy(() => import('./pages/Scorecard'));
+const Analytics = lazy(() => import('./pages/Analytics'));
+const Congratulations = lazy(() => import('./pages/Congratulations'));
+const PlayerProfile = lazy(() => import('./pages/PlayerProfile'));
+const WatchLive = lazy(() => import('./pages/WatchLive'));
+const ManualScore = lazy(() => import('./pages/ManualScore'));
+const Tournaments = lazy(() => import('./pages/Tournaments'));
+const CreateTournament = lazy(() => import('./pages/CreateTournament'));
+const TournamentDashboard = lazy(() => import('./pages/TournamentDashboard'));
+
 import UpdateChecker from './components/UpdateChecker';
 import RecoveryDialog from './components/RecoveryDialog';
 import BottomNav from './components/BottomNav';
@@ -152,9 +163,26 @@ const HardwareBackHandler = () => {
 };
 
 /* ── Animated Routes Container ──────────────────────────────────────────────
-   Uses framer-motion AnimatePresence to smoothly animate page entry and exit.
-   Direction-aware: back navigation slides from left, forward from right.
+   iOS-style page transition. Direction-aware: back slides from the left,
+   forward from the right.
+
+   Three deliberate choices for smoothness on low-end Android:
+   1. Transform only, no opacity. This is the big one: fading a whole 100vh
+      page forced the compositor to re-blend every layer beneath it (including
+      the fixed nav) on every frame. iOS slides pages rather than cross-fading
+      them, so dropping opacity is both cheaper and more faithful.
+   2. A tween on the iOS navigation curve instead of a spring — a fixed 380ms
+      has no long settling tail, so the transition is completely finished
+      before the user's next tap lands.
+   3. `mode="popLayout"` is kept on purpose. It measures the exiting page once
+      per navigation to take it out of flow; without it both pages sit in
+      normal flow and stack vertically mid-transition. Doing this in CSS
+      instead would mean scrolling inside each page layer, which would break
+      useScrollRestore (src/hooks/useScrollRestore.js) — it drives
+      window.scrollY / window.scrollTo on the document scroller.
 ──────────────────────────────────────────────────────────────────────────── */
+const RouteFallback = () => <div style={{ flex: 1, minHeight: '100vh' }} />;
+
 const AnimatedRoutes = () => {
   const location = useLocation();
   const navigationType = useNavigationType();
@@ -164,51 +192,55 @@ const AnimatedRoutes = () => {
   const isBack = navigationType === 'POP';
 
   const variants = shouldReduceMotion
-    ? { initial: { opacity: 1 }, animate: { opacity: 1 }, exit: { opacity: 1 } }
+    ? { initial: {}, animate: {}, exit: {} }
     : {
-        initial: { opacity: 0, x: isBack ? '-35%' : '35%' },
-        animate: { opacity: 1, x: '0%' },
-        exit: { opacity: 0, x: isBack ? '35%' : '-35%' },
+        initial: { x: isBack ? '-30%' : '30%' },
+        animate: { x: '0%' },
+        exit: { x: isBack ? '30%' : '-30%' },
       };
 
   const transition = shouldReduceMotion
     ? { duration: 0 }
-    : { type: 'spring', stiffness: 350, damping: 32, mass: 0.8 };
+    : { duration: 0.38, ease: [0.32, 0.72, 0, 1] };
 
   return (
-    <AnimatePresence mode="popLayout" initial={false}>
-      <motion.div
-        key={location.pathname}
-        variants={variants}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        transition={transition}
-        style={{ width: '100%', minHeight: '100vh', display: 'flex', flexDirection: 'column', flex: 1, overflowX: 'hidden' }}
-      >
-        <Routes location={location}>
-          <Route path="/" element={<Login />} />
-          <Route path="/home" element={<Home />} />
-          <Route path="/new-match" element={<NewMatch />} />
-          <Route path="/match-settings" element={<MatchSettings />} />
-          <Route path="/player-entry" element={<PlayerEntry />} />
-          <Route path="/live-scoring" element={<LiveScoring />} />
-          <Route path="/manual-score" element={<ManualScore />} />
-          <Route path="/innings-break" element={<InningsBreak />} />
-          <Route path="/congratulations" element={<Congratulations />} />
-          <Route path="/scorecard" element={<Scorecard />} />
-          <Route path="/history" element={<History />} />
-          <Route path="/players" element={<Players />} />
-          <Route path="/player-profile/:name" element={<PlayerProfile />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/watch-live" element={<WatchLive />} />
-          <Route path="/tournaments" element={<Tournaments />} />
-          <Route path="/create-tournament" element={<CreateTournament />} />
-          <Route path="/tournament/:id" element={<TournamentDashboard />} />
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
-      </motion.div>
-    </AnimatePresence>
+    <div className="page-stack">
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.div
+          key={location.pathname}
+          className="page-layer"
+          variants={variants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          transition={transition}
+        >
+          <Suspense fallback={<RouteFallback />}>
+            <Routes location={location}>
+              <Route path="/" element={<Login />} />
+              <Route path="/home" element={<Home />} />
+              <Route path="/new-match" element={<NewMatch />} />
+              <Route path="/match-settings" element={<MatchSettings />} />
+              <Route path="/player-entry" element={<PlayerEntry />} />
+              <Route path="/live-scoring" element={<LiveScoring />} />
+              <Route path="/manual-score" element={<ManualScore />} />
+              <Route path="/innings-break" element={<InningsBreak />} />
+              <Route path="/congratulations" element={<Congratulations />} />
+              <Route path="/scorecard" element={<Scorecard />} />
+              <Route path="/history" element={<History />} />
+              <Route path="/players" element={<Players />} />
+              <Route path="/player-profile/:name" element={<PlayerProfile />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/watch-live" element={<WatchLive />} />
+              <Route path="/tournaments" element={<Tournaments />} />
+              <Route path="/create-tournament" element={<CreateTournament />} />
+              <Route path="/tournament/:id" element={<TournamentDashboard />} />
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          </Suspense>
+        </motion.div>
+      </AnimatePresence>
+    </div>
   );
 };
 
@@ -223,7 +255,14 @@ function App() {
 
   useEffect(() => {
      try { SplashScreen.hide().catch(() => {}); } catch (e) {}
-     const timer = setTimeout(() => setShowSplash(false), 3300);
+     /* ~1.0s, down from 3300ms. Measured against the retimed animation in
+        SplashScreen.jsx: ball settles ~520ms, title finishes revealing ~740ms,
+        then .splash-wrap fades itself out from 820ms to 1000ms. Unmounting at
+        1010ms means the splash has already dismissed itself — no hard cut, and
+        no ~2.4s of the user waiting on a finished animation. The overshoot past
+        900ms buys the brand ~100ms at full opacity instead of clipping it.
+        Keep the two in sync if you retime either. */
+     const timer = setTimeout(() => setShowSplash(false), 1010);
 
     return () => clearTimeout(timer);
   }, []);

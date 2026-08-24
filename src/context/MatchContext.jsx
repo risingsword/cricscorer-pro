@@ -3,7 +3,7 @@ import { db, rtdb } from '../firebase';
 import { doc, setDoc, getDoc, updateDoc, deleteField } from 'firebase/firestore';
 import { ref, set as rsSet, remove as rsRemove } from 'firebase/database';
 import { openDB } from 'idb';
-import { clearMatchCache, fetchRecentPlayers, getUserScope } from '../utils/dataFetcher';
+import { clearMatchCache, fetchRecentPlayers, getUserScope, guardActivePush } from '../utils/dataFetcher';
 import { saveNameToStorage, saveMultipleNamesToStorage, removeNameFromStorage } from '../utils/nameStorage';
 import { processedBatsmen } from '../utils/soundPlayer';
 
@@ -194,6 +194,17 @@ export const syncToFirestore = async (s) => {
             stateToSync.updatedAt = now;           // LWW primary timestamp
             stateToSync.lastUpdated = now;         // Legacy compat
             stateToSync.createdAt = s.createdAt || s.startTime || now; // Set once
+
+            // Anti-resurrection guard: if the owner has tombstoned this match in the cloud,
+            // abort the entire sync for it — do NOT re-upload, broadcast to RTDB, or aggregate
+            // stats. guardActivePush also purges it locally and records the id in deleted_matches
+            // so this device stops trying. This is what stops the delete → re-upload loop.
+            if (s.matchId) {
+                const guardRef = doc(db, 'shareLogins', s.userCode, 'matches', s.matchId);
+                const okToPush = await guardActivePush(guardRef, s.matchId, getUserScope(s));
+                if (!okToPush) return;
+            }
+
             console.log(`[Sync] syncToFirestore (shareable): ${s.matchId}, updatedAt=${now}`);
             const docRef = doc(db, 'shareLogins', s.userCode);
             await setDoc(docRef, {
@@ -255,6 +266,18 @@ export const syncToFirestore = async (s) => {
             stateToSync.updatedAt = now;           // LWW primary timestamp
             stateToSync.lastUpdated = now;         // Legacy compat
             stateToSync.createdAt = s.createdAt || s.startTime || now; // Set once
+
+            // Anti-resurrection guard (owner side): if this match is tombstoned in the cloud,
+            // don't let an active auto-sync bring it back — this aborts the googleUsers write AND
+            // both shareLogins mirror writes below. Explicit owner restore
+            // (restoreAllTombstonedMatches / forceFullDataRecovery) writes directly and clears
+            // deleted_matches, so recovery is unaffected by this guard.
+            if (s.matchId) {
+                const guardRef = doc(db, 'googleUsers', s.userCode, 'matches', s.matchId);
+                const okToPush = await guardActivePush(guardRef, s.matchId, getUserScope(s));
+                if (!okToPush) return;
+            }
+
             console.log(`[Sync] syncToFirestore (google): ${s.matchId}, updatedAt=${now}`);
             const docRef = doc(db, 'googleUsers', s.userCode);
             await setDoc(docRef, {
@@ -967,7 +990,7 @@ function matchReducerRaw(state, action) {
             return validateMatchState(evaluateMatchStatus(newState));
         }
 
-        case 'LOGOUT':
+        case 'LOGOUT': {
             localStorage.removeItem('cricscorer_login');
             localStorage.removeItem('userSession');
             localStorage.removeItem('cricscorer_last_match_id');
@@ -975,6 +998,7 @@ function matchReducerRaw(state, action) {
             if (lastId) localStorage.removeItem(`cricscorer_active_match_${lastId}`);
             clearMatchCache();
             return { ...initialState, loginType: null };
+        }
 
         case 'SWAP_BATSMEN': {
             const currentIdx = state.currentInnings - 1;

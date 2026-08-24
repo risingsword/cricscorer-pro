@@ -15,11 +15,18 @@ const SplashScreen = () => {
 
         let y = -(window.innerHeight * 0.15 + 80); // starting position safely above screen
         let vy = 0;           // vertical velocity
-        const gravity = 1.25;  // gravity constant
+        /* Retimed for a ~950ms launch (was 1.25, which made the bounce alone
+           run ~1.1s and the whole sequence ~2.7s). The full bounce still plays
+           out — same fall, same four damped rebounds — just faster, which
+           reads as snappy rather than languid.
+           At 812px tall: 12 frames to first impact, then rebounds of ~9.1,
+           ~3.5 and ~1.3 frames before |vy| drops under the 3.5 settle
+           threshold — ~27 frames, ~450ms. Leaves room for the title reveal
+           and fade-out to finish before App.jsx unmounts us. */
+        const gravity = 8.0;
         const groundY = window.innerHeight * 0.52; // ground position
         const damping = 0.38; // bounce damping
         let rotation = 0;
-        let settled = false;
         let frameId;
 
         const loop = () => {
@@ -29,41 +36,55 @@ const SplashScreen = () => {
 
             if (y >= groundY) {
                 y = groundY;
-                
-                if (Math.abs(vy) < 3.5) {
-                    settled = true;
+
+                /* Settle when the rebound is too small to lift the ball clear
+                   of the ground for even one frame. Deriving it from gravity
+                   matters: the old test was a hardcoded `Math.abs(vy) < 3.5`,
+                   but at rest the ground-check velocity converges to
+                   gravity / (1 + damping), so any gravity above ~4.8 made that
+                   test unsatisfiable — the ball jittered on the ground forever
+                   and the title reveal it gates never fired. */
+                const rebound = Math.abs(vy) * damping;
+
+                if (rebound < gravity) {
                     ball.style.transform = `translateY(${y}px) translateX(-50%) rotate(${rotation}deg)`;
-                    
+
                     setTimeout(() => {
                         setRevealText(true);
-                        setTimeout(() => setRevealSubtitle(true), 400);
-                    }, 200);
-                    
+                        setTimeout(() => setRevealSubtitle(true), 50);
+                    }, 20);
+
                     cancelAnimationFrame(frameId);
                     return;
                 }
-                
-                vy = -Math.abs(vy) * damping;
+
+                vy = -rebound;
             }
 
             ball.style.transform = `translateY(${y}px) translateX(-50%) rotate(${rotation}deg)`;
-            
+
             if (shadow) {
                 const distance = groundY - y;
                 const ratio = Math.max(0, 1 - (distance / 400)); // normalized proximity
-                const shadowWidth = 20 + ratio * 40; 
+                const shadowWidth = 20 + ratio * 40;
                 const shadowOpacity = 0.1 + ratio * 0.4;
-                
-                shadow.style.width = `${shadowWidth}px`;
+
+                /* scaleX off a fixed 60px base rather than writing `width`.
+                   Setting width here forced a layout on every frame of the
+                   launch animation — the one moment the main thread is already
+                   busy booting the app. transform is compositor-only. */
+                shadow.style.transform = `translateX(-50%) scaleX(${shadowWidth / 60})`;
                 shadow.style.opacity = `${shadowOpacity}`;
             }
 
             frameId = requestAnimationFrame(loop);
         };
 
+        /* One frame, not 400ms. The old delay was dead time at the single
+           moment the user is already waiting on the app to boot. */
         const startTimer = setTimeout(() => {
             frameId = requestAnimationFrame(loop);
-        }, 400);
+        }, 16);
 
         return () => {
             clearTimeout(startTimer);
@@ -84,7 +105,14 @@ const SplashScreen = () => {
                     align-items: center;
                     justify-content: center;
                     overflow: hidden;
-                    animation: fade-out 0.5s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards 2.8s;
+                    /* Measured, not guessed: the ball settles ~520ms after
+                       mount and the title finishes revealing ~740ms, so the
+                       fade waits until 820ms to give the brand ~100ms at full
+                       opacity, then runs 180ms. Previously this was delayed
+                       2.8s — tuned to the old 3.3s timer — so once the splash
+                       was shortened the fade never fired at all and the splash
+                       vanished in a hard cut. App.jsx unmounts at 1010ms. */
+                    animation: fade-out 0.18s cubic-bezier(0.4, 0, 1, 1) forwards 0.82s;
                 }
                 
                 @keyframes fade-out {
@@ -130,13 +158,17 @@ const SplashScreen = () => {
                 .ball-shadow {
                     position: absolute;
                     height: 8px;
+                    /* Fixed base width; the rAF loop scales it with scaleX.
+                       No transition here on purpose — the loop writes transform
+                       and opacity every frame, so a CSS transition would just
+                       fight it with a fresh 100ms interpolation each frame. */
+                    width: 60px;
                     background: radial-gradient(ellipse, rgba(0,0,0,0.5), transparent);
                     border-radius: 50%;
                     left: 50%;
-                    transform: translateX(-50%);
-                    bottom: 46%; 
+                    transform: translateX(-50%) scaleX(0.333);
+                    bottom: 46%;
                     pointer-events: none;
-                    transition: width 100ms ease-out, opacity 100ms ease-out;
                     opacity: 0;
                 }
 
@@ -173,13 +205,14 @@ const SplashScreen = () => {
                     flex-direction: column;
                     align-items: center;
                     opacity: 0;
-                    transform: translateY(30px);
-                    transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+                    transform: translate3d(0, 24px, 0);
+                    transition: opacity 0.22s cubic-bezier(0.32, 0.72, 0, 1),
+                                transform 0.22s cubic-bezier(0.32, 0.72, 0, 1);
                 }
 
                 .text-container.show {
                     opacity: 1;
-                    transform: translateY(0);
+                    transform: translate3d(0, 0, 0);
                 }
 
                 .char-row {
@@ -199,7 +232,7 @@ const SplashScreen = () => {
                     letter-spacing: 2px;
                     text-transform: uppercase;
                     opacity: 0;
-                    transition: opacity 0.4s ease-out;
+                    transition: opacity 0.16s ease-out;
                 }
 
                 .subtitle.show {

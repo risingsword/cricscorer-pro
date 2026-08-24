@@ -1,5 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
+/* Font is loaded via <link> in index.html — see the comment there for why an
+   @import here was hurting first paint. */
 :root {
   --primary: #1e1b4b;
   --primary-light: #4338ca;
@@ -15,6 +15,19 @@
   --radius-sm: 10px;
   --radius: 16px;
   --radius-lg: 20px;
+
+  /* ── Motion tokens ───────────────────────────────────────────────────────
+     One place for timing so the whole app shares a single motion language.
+     --ease-ios is Apple's standard navigation/emphasis curve: a decisive
+     start that decelerates hard into place. --ease-out is for small colour
+     and opacity changes. Tap scale is deliberately subtle (0.97) — the old
+     0.93/0.85 read as cartoonish rather than tactile.
+  ─────────────────────────────────────────────────────────────────────── */
+  --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --tap-dur: 0.18s;
+  --tap-scale: 0.97;
+  --stagger-step: 24ms;
 }
 
 /* ── Prevent ALL zoom ──────────────────────────────────────────────────────
@@ -66,24 +79,27 @@ div[onTouchStart] {
    Combine with .tap-ripple for an expanding ripple from touch point.
 ────────────────────────────────────────────────────────────────────────── */
 
-/* Base tap class: clips children, smooth spring scale */
+/* Base tap class: clips children, smooth spring scale.
+   No `will-change` here — it was permanently promoting every tappable element
+   to its own GPU layer (~20 on the scoring screen), which costs memory on
+   low-end Android and slows compositing rather than helping. translateZ(0)
+   already gives us the promotion we actually want, and only while painting. */
 .tap {
   position: relative;
   overflow: hidden;
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
-  will-change: transform;
   touch-action: manipulation;
-  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
-              box-shadow 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
-              background-color 0.12s cubic-bezier(0.4, 0, 0.2, 1),
-              color 0.12s cubic-bezier(0.4, 0, 0.2, 1),
-              border-color 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--tap-dur) var(--ease-ios),
+              box-shadow var(--tap-dur) var(--ease-ios),
+              background-color 0.12s var(--ease-out),
+              color 0.12s var(--ease-out),
+              border-color 0.12s var(--ease-out);
   cursor: pointer;
 }
 
 .tap:active {
-  transform: scale(0.93) translateZ(0);
+  transform: scale(var(--tap-scale)) translateZ(0);
 }
 
 /* Liquid fill overlay — spreads inward from center on press */
@@ -141,36 +157,41 @@ div[onTouchStart] {
 
 /* Specific tap variants */
 .tap-primary {
-  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
-              box-shadow 0.2s ease,
-              background-color 0.2s ease;
+  transition: transform var(--tap-dur) var(--ease-ios),
+              box-shadow 0.2s var(--ease-out),
+              background-color 0.2s var(--ease-out);
 }
 .tap-primary:active {
-  transform: scale(0.93) translateZ(0);
+  transform: scale(var(--tap-scale)) translateZ(0);
   box-shadow: 0 2px 8px rgba(30, 27, 75, 0.15) !important;
 }
 
 /* Nav item press */
 .nav-item {
-  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
-              color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition: transform var(--tap-dur) var(--ease-ios),
+              color 0.22s var(--ease-out),
+              background-color 0.22s var(--ease-out) !important;
 }
 .nav-item:active {
-  transform: scale(0.88) translateY(2px);
+  transform: scale(var(--tap-scale)) translateZ(0);
 }
 .nav-item.active svg {
   filter: drop-shadow(0 0 4px rgba(67, 56, 202, 0.4));
 }
 
 body {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  /* System fallbacks matter here: this ships as a Capacitor app, so if the
+     webfont request fails offline we land on the platform UI font (SF on iOS,
+     Roboto on Android) instead of generic sans-serif. */
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
   background: var(--bg-color);
   color: var(--text-main);
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
   -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
   overscroll-behavior-y: none;
 }
 
@@ -205,7 +226,9 @@ textarea {
   color: var(--text-main) !important;
   outline: none !important;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02) !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: border-color 0.2s var(--ease-out),
+              box-shadow 0.2s var(--ease-out),
+              background-color 0.2s var(--ease-out);
   appearance: none !important;
   -webkit-appearance: none !important;
 }
@@ -233,7 +256,7 @@ input[type="radio"] {
   outline: none;
   cursor: pointer;
   position: relative;
-  transition: all 0.2s ease;
+  transition: border-color 0.2s var(--ease-out), background-color 0.2s var(--ease-out);
   background: #ffffff;
 }
 
@@ -273,12 +296,18 @@ input[type="number"] {
   padding: 16px;
   margin-bottom: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.3s var(--ease-ios);
 }
 
-.card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.05);
+/* Hover-only lift. Gated behind a real pointer: on Android WebView there is no
+   pointer to leave, so an unguarded :hover stuck the card in its lifted state
+   after every tap. box-shadow is intentionally left out of the transition —
+   interpolating a 40px shadow blur repaints on every frame. */
+@media (hover: hover) and (pointer: fine) {
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.05);
+  }
 }
 
 .text-gradient {
@@ -302,9 +331,9 @@ input[type="number"] {
   left: 0;
   right: 0;
   height: 68px;
-  background: rgba(255, 255, 255, 0.97);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  /* Opaque, not 0.97 + blur(20px): at that alpha the blur was ~3% visible but
+     re-ran on every scroll/transition frame. Visually identical, far cheaper. */
+  background: #ffffff;
   border-top: 1px solid rgba(241, 245, 249, 0.8);
   display: flex !important;
   flex-direction: row !important;
@@ -328,8 +357,8 @@ input[type="number"] {
   gap: 2px;
   position: relative;
   overflow: visible;
-  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
-              color 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--tap-dur) var(--ease-ios),
+              color 0.22s var(--ease-out);
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
   padding: 0;
@@ -337,7 +366,7 @@ input[type="number"] {
 }
 
 .nav-item:active {
-  transform: scale(0.85) translateZ(0);
+  transform: scale(var(--tap-scale)) translateZ(0);
 }
 
 .nav-item.active {
@@ -366,39 +395,43 @@ input[type="number"] {
 
 /* Utility Animations */
 .animate-fade-in {
-  animation: fadeIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: fadeIn 0.32s var(--ease-ios) forwards;
 }
 
-.stagger-1 { animation-delay: 40ms; }
-.stagger-2 { animation-delay: 80ms; }
-.stagger-3 { animation-delay: 120ms; }
-.stagger-4 { animation-delay: 160ms; }
-.stagger-5 { animation-delay: 200ms; }
-.stagger-6 { animation-delay: 240ms; }
-.stagger-7 { animation-delay: 280ms; }
-.stagger-8 { animation-delay: 320ms; }
-.stagger-9 { animation-delay: 360ms; }
-.stagger-10 { animation-delay: 400ms; }
+/* Stagger steps are 24ms and deliberately plateau after the 6th item: the old
+   40ms ramp meant a 10-item list took 400ms just to finish appearing, which
+   reads as sluggish. Capping keeps long lists from trailing in. */
+.stagger-1 { animation-delay: calc(var(--stagger-step) * 1); }
+.stagger-2 { animation-delay: calc(var(--stagger-step) * 2); }
+.stagger-3 { animation-delay: calc(var(--stagger-step) * 3); }
+.stagger-4 { animation-delay: calc(var(--stagger-step) * 4); }
+.stagger-5 { animation-delay: calc(var(--stagger-step) * 5); }
+.stagger-6 { animation-delay: calc(var(--stagger-step) * 6); }
+.stagger-7 { animation-delay: calc(var(--stagger-step) * 6); }
+.stagger-8 { animation-delay: calc(var(--stagger-step) * 6); }
+.stagger-9 { animation-delay: calc(var(--stagger-step) * 6); }
+.stagger-10 { animation-delay: calc(var(--stagger-step) * 6); }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translate3d(0, 10px, 0);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 .tap-card {
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, background-color 0.2s ease !important;
+  transition: transform var(--tap-dur) var(--ease-ios), background-color 0.2s var(--ease-out) !important;
   cursor: pointer;
   touch-action: manipulation;
-  will-change: transform;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 .tap-card:active {
-  transform: scale(0.96) translateZ(0) !important;
+  transform: scale(var(--tap-scale)) translateZ(0) !important;
   background-color: #f8fafc !important;
 }
 
@@ -410,14 +443,18 @@ input[type="number"] {
   right: 0;
   bottom: 0;
   background: rgba(15, 23, 42, 0.5);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  /* Reduced from 10px (blur cost scales with radius) and deliberately NOT
+     animated: any repaint of a backdrop-filtered layer re-runs the blur, so a
+     200ms opacity fade meant blurring the whole screen ~12 times instead of
+     once. The scrim now lands immediately and .modal-content carries the
+     motion via modalScaleIn below. */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 5000;
   padding: 20px;
-  animation: overlayFadeIn 0.2s cubic-bezier(0.4,0,0.2,1) forwards;
 }
 
 @keyframes overlayFadeIn {
@@ -434,12 +471,12 @@ input[type="number"] {
   box-shadow: 0 20px 60px rgba(0,0,0,0.15);
   position: relative;
   overflow: hidden;
-  animation: modalScaleIn 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards;
+  animation: modalScaleIn 0.28s var(--ease-ios) forwards;
 }
 
 @keyframes modalScaleIn {
-  from { transform: scale(0.92); opacity: 0; }
-  to   { transform: scale(1);    opacity: 1; }
+  from { transform: scale(0.96) translate3d(0, 8px, 0); opacity: 0; }
+  to   { transform: scale(1) translate3d(0, 0, 0);      opacity: 1; }
 }
 
 /* Bottom sheet variant — apply inline alignItems:flex-end on the overlay */
@@ -460,10 +497,10 @@ button {
   border: 1.5px solid #f1f5f9;
   background: #ffffff;
   touch-action: manipulation;
-  transition: transform 0.12s cubic-bezier(0.34,1.56,0.64,1),
-              background 0.1s cubic-bezier(0.4,0,0.2,1),
-              box-shadow 0.1s ease,
-              opacity 0.1s ease;
+  transition: transform var(--tap-dur) var(--ease-ios),
+              background 0.15s var(--ease-out),
+              box-shadow 0.15s var(--ease-out),
+              opacity 0.15s var(--ease-out);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -471,13 +508,12 @@ button {
   color: #1e1b4b;
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
-  will-change: transform;
   position: relative;
   overflow: hidden;
 }
 
 button:active:not(:disabled) {
-  transform: scale(0.93) translateZ(0);
+  transform: scale(var(--tap-scale)) translateZ(0);
 }
 
 button.primary {
@@ -489,9 +525,9 @@ button.primary {
   overflow: hidden;
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
-  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
-              box-shadow 0.18s ease,
-              background 0.2s ease;
+  transition: transform var(--tap-dur) var(--ease-ios),
+              box-shadow 0.18s var(--ease-out),
+              background 0.2s var(--ease-out);
 }
 
 button.primary::after {
@@ -505,7 +541,7 @@ button.primary::after {
 }
 
 button.primary:active {
-  transform: scale(0.94) translateZ(0);
+  transform: scale(var(--tap-scale)) translateZ(0);
   box-shadow: 0 4px 12px rgba(30, 27, 75, 0.2);
 }
 
@@ -522,10 +558,10 @@ button.secondary {
   overflow: hidden;
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
-  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
-              background-color 0.18s cubic-bezier(0.4, 0, 0.2, 1),
-              border-color 0.18s cubic-bezier(0.4, 0, 0.2, 1),
-              box-shadow 0.18s ease;
+  transition: transform var(--tap-dur) var(--ease-ios),
+              background-color 0.18s var(--ease-out),
+              border-color 0.18s var(--ease-out),
+              box-shadow 0.18s var(--ease-out);
 }
 
 button.secondary::after {
@@ -539,7 +575,7 @@ button.secondary::after {
 }
 
 button.secondary:active {
-  transform: scale(0.93) translateZ(0);
+  transform: scale(var(--tap-scale)) translateZ(0);
   background-color: #f1f5f9;
 }
 
@@ -547,9 +583,11 @@ button.secondary:active::after {
   background: rgba(30, 27, 75, 0.06);
 }
 
-button.secondary:hover {
-  background-color: #f8fafc;
-  border-color: #e2e8f0;
+@media (hover: hover) and (pointer: fine) {
+  button.secondary:hover {
+    background-color: #f8fafc;
+    border-color: #e2e8f0;
+  }
 }
 
 /* Scorer Balls */
@@ -572,13 +610,15 @@ button.secondary:hover {
   fill: rgba(16, 185, 129, 0.05);
   stroke: rgba(16, 185, 129, 0.2);
   stroke-width: 1;
-  transition: all 0.2s ease;
+  transition: fill 0.2s var(--ease-out), stroke 0.2s var(--ease-out);
   cursor: pointer;
 }
 
-.wagon-wheel-slice:hover {
-  fill: rgba(16, 185, 129, 0.2);
-  stroke: rgba(16, 185, 129, 1);
+@media (hover: hover) and (pointer: fine) {
+  .wagon-wheel-slice:hover {
+    fill: rgba(16, 185, 129, 0.2);
+    stroke: rgba(16, 185, 129, 1);
+  }
 }
 
 /* Loader & Spinner */
@@ -642,7 +682,9 @@ button.secondary:hover {
   border-radius: 14px;
   background: rgba(0, 0, 0, 0.08);
   border: 1px solid rgba(0, 0, 0, 0.04);
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: background 0.3s var(--ease-ios),
+              border-color 0.3s var(--ease-ios),
+              box-shadow 0.3s var(--ease-ios);
   cursor: pointer;
 }
 
@@ -661,11 +703,13 @@ input:checked + .toggle-track {
   border-radius: 50%;
   background: #ffffff;
   box-shadow: 0 2px 4px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.8);
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* transform, not `left` — animating `left` runs layout on every frame */
+  transition: transform 0.3s var(--ease-ios), box-shadow 0.3s var(--ease-ios);
+  will-change: transform;
 }
 
 input:checked + .toggle-track .toggle-thumb {
-  left: 25px;
+  transform: translateX(22px);
   box-shadow: 0 2px 6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.9);
 }
 
@@ -675,5 +719,49 @@ input:checked + .toggle-track .toggle-thumb {
 }
 
 .animate-slide-up {
-  animation: slide-up 0.3s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  animation: slide-up 0.3s var(--ease-ios) forwards;
+}
+
+/* ── Page transition layer ─────────────────────────────────────────────────
+   AnimatePresence keeps the outgoing and incoming page mounted at the same
+   time; `mode="popLayout"` lifts the outgoing one out of flow. .page-stack is
+   the positioning context that absolute child is resolved against, so the two
+   pages line up instead of drifting to the document origin. Scrolling stays on
+   the document (not these layers) so useScrollRestore keeps working.
+──────────────────────────────────────────────────────────────────────────── */
+.page-layer {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow-x: hidden;
+  /* Keeps the slide on the compositor and avoids seams on subpixel offsets */
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.page-stack {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+}
+
+/* ── Reduced motion ────────────────────────────────────────────────────────
+   Honour the OS setting globally, not just for page transitions. Kept at a
+   near-zero duration rather than `none` so animation/transition end events
+   still fire and nothing waits forever on a callback.
+──────────────────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -30,7 +30,7 @@ const TapButton = ({ onClick, isSelected, disabled, style, children, rippleColor
     return (
         <motion.div
             ref={ref}
-            whileTap={disabled ? {} : { scale: 0.94 }}
+            whileTap={disabled ? {} : { scale: 0.97 }}
             transition={SPRING_PRESET}
             onClick={(e) => {
                 if (disabled) return;

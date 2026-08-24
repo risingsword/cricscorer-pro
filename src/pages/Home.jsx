@@ -101,8 +101,11 @@ const Home = () => {
         if (state.loginType && state.loginType !== 'guest' && state.userCode) {
             import('../utils/dataFetcher').then(async (mod) => {
                 try {
-                    await mod.syncAllLocalMatchesToCloud();
+                    // Pull first so any owner-deleted (tombstoned) matches are applied locally
+                    // BEFORE we scan localStorage to push — prevents re-uploading a match the
+                    // owner just deleted.
                     await mod.forcePullFromCloud();
+                    await mod.syncAllLocalMatchesToCloud();
                 } catch (e) {
                     console.warn('[Home] Auto-sync failed:', e);
                 }
@@ -261,7 +264,7 @@ const Home = () => {
                                 You have a live match in progress: <br /><span style={{ color: '#4338ca', fontWeight: '800' }}>{state.team1?.name} vs {state.team2?.name}</span>
                             </p>
                             <motion.button
-                                whileTap={{ scale: 0.95 }}
+                                whileTap={{ scale: 0.97 }}
                                 transition={SPRING_PRESET}
                                 onClick={() => { triggerHaptic('light'); navigate('/live-scoring'); }}
                                 style={{ width: '100%', height: '42px', padding: '0 16px', borderRadius: '12px', background: 'linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%)', border: 'none', color: 'white', fontWeight: '800', marginBottom: '10px', cursor: 'pointer', boxShadow: '0 4px 15px rgba(30,27,75,0.2)' }}
@@ -269,7 +272,7 @@ const Home = () => {
                                 Resume Scoring
                             </motion.button>
                             <motion.button
-                                whileTap={{ scale: 0.96 }}
+                                whileTap={{ scale: 0.97 }}
                                 onClick={() => { triggerHaptic('light'); setShowResume(false); }}
                                 style={{ width: '100%', padding: '10px', background: 'transparent', border: 'none', color: '#94a3b8', fontWeight: '700', fontSize: '12px', cursor: 'pointer' }}
                             >
@@ -295,7 +298,7 @@ const Home = () => {
                                 <div style={{ fontSize: '11px', fontWeight: '600', opacity: 0.8, marginTop: '2px' }}>Don't lose your stats on uninstall!</div>
                             </div>
                             <motion.button
-                                whileTap={{ scale: 0.94 }}
+                                whileTap={{ scale: 0.97 }}
                                 onClick={handleSyncToGoogle}
                                 style={{ padding: '4px 16px', height: '32px', borderRadius: '10px', backgroundColor: 'white', color: '#1e1b4b', border: 'none', fontWeight: '800', fontSize: '12px', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}
                             >
@@ -314,8 +317,6 @@ const Home = () => {
                                 triggerHaptic('light');
                                 navigate(item.path);
                             }}
-                            whileTap={{ scale: 0.96, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
-                            whileHover={{ scale: 1.01 }}
                             transition={SPRING_PRESET}
                             className="card tap"
                             style={{
@@ -384,7 +385,7 @@ const Home = () => {
                                 <motion.div
                                     key={i}
                                     variants={itemVariants}
-                                    whileTap={{ scale: 0.96 }}
+                                    whileTap={{ scale: 0.97 }}
                                     transition={SPRING_PRESET}
                                     onClick={() => {
                                         triggerHaptic('light');
@@ -460,8 +461,7 @@ const Home = () => {
                 <motion.div
                     variants={itemVariants}
                     onClick={() => { triggerHaptic('light'); setIsFeedbackOpen(true); }}
-                    whileTap={{ scale: 0.96 }}
-                    whileHover={{ scale: 1.01 }}
+                    whileTap={TAP_SCALE}
                     transition={SPRING_PRESET}
                     className="card"
                     style={{

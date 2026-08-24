@@ -96,7 +96,7 @@ const WagonWheelModal = ({ show, onSelect, onSkip, pendingRuns = 0 }) => {
 
                         <div style={{ position: 'relative', width: '280px', height: '280px', margin: '0 auto' }}>
                             <motion.button
-                                whileTap={{ scale: 0.88 }}
+                                whileTap={{ scale: 0.97 }}
                                 onClick={handleRotate}
                                 title="Rotate Field"
                                 style={{
@@ -142,7 +142,7 @@ const WagonWheelModal = ({ show, onSelect, onSkip, pendingRuns = 0 }) => {
 
                         <div style={{ marginTop: '24px' }}>
                             <motion.button
-                                whileTap={{ scale: 0.96 }}
+                                whileTap={{ scale: 0.97 }}
                                 onClick={() => { triggerHaptic('light'); onSkip(); }}
                                 className="secondary"
                                 style={{ width: '100%', height: '52px', borderRadius: '16px', fontWeight: '700', border: 'none', cursor: 'pointer' }}

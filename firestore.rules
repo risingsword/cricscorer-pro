@@ -17,7 +17,17 @@ service cloud.firestore {
       
       match /matches/{matchId} {
         allow read: if true;
-        allow write: if true;
+        // New matches (including code-user scoring) may be created freely.
+        allow create: if true;
+        // A tombstoned match (deleted:true or deletedAt set) may only be un-deleted / changed
+        // by the authenticated NON-ANONYMOUS owner (Google sign-in). Unauthenticated code users
+        // — and lingering anonymous/guest sessions — can still update a LIVE match, but can NOT
+        // un-delete one the owner removed. This is the server-side backstop that stops the
+        // delete -> re-upload loop even for devices running an older app version.
+        allow update: if (request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous')
+                      || !(resource.data.deleted == true || resource.data.deletedAt != null);
+        // Only the authenticated non-anonymous owner may hard-delete a match document.
+        allow delete: if request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous';
       }
     }
     

@@ -69,6 +69,21 @@ export const getMatchTimestamp = (matchOrId) => {
     return parseInt(digits) || 0;
 };
 
+// Purge every local trace of a match (per-match localStorage keys, any scope).
+// Used both when a cloud tombstone is discovered in separateTombstones and by
+// guardActivePush when an active push is blocked. Keeps the previously-duplicated
+// purge logic in one place.
+const purgeMatchLocally = (matchId, userScope) => {
+    if (!matchId) return;
+    try {
+        if (userScope) {
+            localStorage.removeItem(`cricscorer_${userScope}_match_${matchId}`);
+        }
+        const keys = Object.keys(localStorage).filter(k => k.includes(`_match_${matchId}`));
+        keys.forEach(k => localStorage.removeItem(k));
+    } catch (e) { }
+};
+
 // --- Tombstone Soft-Delete Pattern (LWW-aware) ---
 // Matches with deleted:true OR deletedAt set are tombstones.
 // The tombstone timestamp (deletedAt) is compared against updatedAt to determine
@@ -91,13 +106,7 @@ const separateTombstones = (matches, userScope, ignoreTombstones = false) => {
             }
 
             // Purge from local storage immediately when a cloud tombstone is found
-            if (userScope) {
-                localStorage.removeItem(`cricscorer_${userScope}_match_${m.matchId}`);
-                try {
-                    const keys = Object.keys(localStorage).filter(k => k.includes(`_match_${m.matchId}`));
-                    keys.forEach(k => localStorage.removeItem(k));
-                } catch (e) { }
-            }
+            purgeMatchLocally(m.matchId, userScope);
 
             // Always persist tombstone to localStorage
             if (typeof window !== 'undefined') {
@@ -129,13 +138,7 @@ const separateTombstones = (matches, userScope, ignoreTombstones = false) => {
         if (isTombstone) continue; // Skip tombstone records in output
 
         if (localDeleted.includes(m.matchId)) {
-            if (userScope) {
-                localStorage.removeItem(`cricscorer_${userScope}_match_${m.matchId}`);
-                try {
-                    const keys = Object.keys(localStorage).filter(k => k.includes(`_match_${m.matchId}`));
-                    keys.forEach(k => localStorage.removeItem(k));
-                } catch (e) { }
-            }
+            purgeMatchLocally(m.matchId, userScope);
             purged++;
             continue;
         }
@@ -146,13 +149,7 @@ const separateTombstones = (matches, userScope, ignoreTombstones = false) => {
 
             // Tombstone wins if >= active match timestamp
             if (tombstoneTime >= mTime) {
-                if (userScope) {
-                    localStorage.removeItem(`cricscorer_${userScope}_match_${m.matchId}`);
-                    try {
-                        const keys = Object.keys(localStorage).filter(k => k.includes(`_match_${m.matchId}`));
-                        keys.forEach(k => localStorage.removeItem(k));
-                    } catch (e) { }
-                }
+                purgeMatchLocally(m.matchId, userScope);
                 console.log(`[Sync] TOMBSTONE ${m.matchId} — purged (tomb=${tombstoneTime} >= match=${mTime})`);
                 purged++;
                 continue;
@@ -724,6 +721,38 @@ export const addDeletedMatchId = (matchId) => {
     } catch (e) { }
 };
 
+/**
+ * Anti-resurrection guard. Reads the cloud match doc BEFORE pushing an active
+ * (deleted:false) version of it. If the cloud copy is a tombstone — i.e. the owner
+ * has deleted the match — the push is blocked UNCONDITIONALLY (local timestamps are
+ * ignored on purpose: an owner deletion must always win over a code user who keeps
+ * scoring a since-deleted match), the match is purged from this device, and its id is
+ * recorded in `deleted_matches` so every other sync path skips it from now on.
+ *
+ * Returns true when it is safe to push, false when the push must be skipped.
+ * On a read failure (offline / permission) it returns true and lets the write proceed —
+ * the Firestore security rule is the server-side backstop that still blocks resurrection.
+ */
+export const guardActivePush = async (matchDocRef, matchId, userScope) => {
+    if (!matchDocRef || !matchId) return true;
+    try {
+        const snap = await getDoc(matchDocRef);
+        if (snap.exists()) {
+            const d = snap.data();
+            const isTombstone = d.deleted === true || (d.deletedAt && d.deletedAt > 0);
+            if (isTombstone) {
+                console.log(`[Sync] guardActivePush BLOCKED: ${matchId} — cloud tombstone present, purging locally`);
+                purgeMatchLocally(matchId, userScope);
+                addDeletedMatchId(matchId);
+                return false;
+            }
+        }
+    } catch (e) {
+        // Could not read cloud doc — allow the push; the Firestore rule is the backstop.
+    }
+    return true;
+};
+
 export const clearMatchCache = () => {
     matchCache = null;
     lastFetchTime = 0;
@@ -828,6 +857,10 @@ export const syncAllLocalMatchesToCloud = async () => {
                 }
 
                 if (matchDocRef1) {
+                    // Anti-resurrection guard: never re-upload a match the owner has
+                    // tombstoned in the cloud (that was the deletion-loop bug).
+                    const okToPush = await guardActivePush(matchDocRef1, m.matchId, userScope);
+                    if (!okToPush) return { success: false, skipped: true };
                     await fbSetDoc(matchDocRef1, clean);
                 }
                 if (matchDocRef2) {
@@ -841,9 +874,10 @@ export const syncAllLocalMatchesToCloud = async () => {
         }));
 
         const synced = results.filter(r => r.success).length;
-        const errors = results.filter(r => !r.success).length;
+        const skipped = results.filter(r => r.skipped).length;
+        const errors = results.filter(r => !r.success && !r.skipped).length;
 
-        return { synced, errors, found: localMatches.length, message: `Pushed ${synced}/${localMatches.length} to cloud` };
+        return { synced, errors, skipped, found: localMatches.length, message: `Pushed ${synced}/${localMatches.length} to cloud${skipped ? `, skipped ${skipped} tombstoned` : ''}` };
     } catch (e) {
         console.error('[SyncAll] Fatal error:', e);
         return { synced: 0, errors: -1, found: 0, message: `Fatal sync error: ${e.message}` };
@@ -1417,7 +1451,10 @@ export const permanentlyWipeDeletedMatches = async () => {
         const firebaseUid = auth.currentUser?.uid || (loginType === 'google' ? session.uid || session.userCode : null);
 
         const collectionsToCheck = [];
-        collectionsToCheck.push(fbCol(db, 'shareLogins', shareCode, 'matches'));
+        // Anti-resurrection (Fix 3): do NOT hard-delete shareLogins/{code}/matches tombstones.
+        // Code-user devices rely on those tombstones (plus the Firestore rule) to know the match
+        // is gone; deleting the doc entirely would let a code user's next push re-create the match
+        // as brand-new. Only the owner-private googleUsers store is permanently wiped here.
         if (firebaseUid && (loginType === 'google' || loginType === 'shareable')) {
             collectionsToCheck.push(fbCol(db, 'googleUsers', firebaseUid, 'matches'));
         }

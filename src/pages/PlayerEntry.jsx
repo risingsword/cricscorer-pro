@@ -56,7 +56,7 @@ const PlayerEntry = () => {
     // on some older phones), show a loading state briefly before redirecting safely.
     const currentInnings = state.currentInnings || 1;
     const currentInn = state.innings?.[currentInnings - 1];
-    
+
     useEffect(() => {
         if (!state.matchId || !currentInn) {
             const timer = setTimeout(() => {
@@ -65,13 +65,6 @@ const PlayerEntry = () => {
             return () => clearTimeout(timer);
         }
     }, [state.matchId, currentInn, navigate]);
-
-    if (!state.matchId || !currentInn) {
-        return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f8fafc', color: '#64748b', fontWeight: '800' }}>Loading match setup...</div>;
-    }
-
-    const teamName = currentInn.battingTeam || '';
-    const bowlingTeamName = currentInn.bowlingTeam || '';
 
     const isSquad1Loaded = team1Players && team1Players.length >= 11;
     const isSquad2Loaded = team2Players && team2Players.length >= 11;
@@ -86,6 +79,11 @@ const PlayerEntry = () => {
         return listMapping;
     };
 
+    // ── HOOKS MUST STAY ABOVE THE EARLY RETURN ──
+    // These useState calls previously sat *after* the `if (!currentInn) return`
+    // guard below, so on loading renders they were skipped — changing the hook
+    // order between renders and corrupting React's state (a Rules-of-Hooks
+    // violation that can crash with "rendered fewer hooks than expected").
     const [squad1, setSquad1] = useState(() => {
         const cached = localStorage.getItem(`cricscore_temp_squad1_${state.matchId}`);
         if (cached) return JSON.parse(cached);
@@ -105,6 +103,13 @@ const PlayerEntry = () => {
     const [striker, setStriker] = useState('');
     const [nonStriker, setNonStriker] = useState('');
     const [bowler, setBowler] = useState('');
+
+    if (!state.matchId || !currentInn) {
+        return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f8fafc', color: '#64748b', fontWeight: '800' }}>Loading match setup...</div>;
+    }
+
+    const teamName = currentInn.battingTeam || '';
+    const bowlingTeamName = currentInn.bowlingTeam || '';
 
     // Issue 5 & 6: Validation state for duplicate/empty player names
     const normalize = (name) => name.trim().toLowerCase();
@@ -369,9 +374,8 @@ const PlayerEntry = () => {
                             triggerHaptic('success');
                             handleStartInnings();
                         }}
-                        whileTap={{ scale: 0.94 }}
-                        whileHover={{ scale: 1.02 }}
-                        transition={{ type: "spring", stiffness: 450, damping: 25 }}
+                        whileTap={{ scale: 0.97 }}
+                        transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
                         disabled={isStartDisabled}
                         style={{
                             height: '68px',
